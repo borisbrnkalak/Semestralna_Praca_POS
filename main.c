@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include "registracia.h"
+
+typedef struct data{
+    char* bufferPrihlasovanie;
+}D;
 
 int main() {
-    printf("Hello, Worldd!\n");
-    printf("Hdalo");
-
+    autentifikacia();
     return 0;
 }

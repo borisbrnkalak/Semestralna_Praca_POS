@@ -3,4 +3,4 @@ project(Semestralna_Praca_POS C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(Semestralna_Praca_POS main.c)
+add_executable(Semestralna_Praca_POS main.c registracia.h registracia.c)
