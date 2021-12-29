@@ -41,8 +41,18 @@ void registruj() {
 
     if(strcmp(&heslo, &potvrdenie) == 0) {
         printf("Registracia uspesna!!\n");
+
+        FILE* subor;
+
+        subor = fopen("prihlaseny.txt", "a+");
+
+        fprintf(subor, &meno);
+
+
+        fclose(subor);
     } else {
         printf("Hesla nie su rovnake!!\n");
+        registruj();
     }
 }
 
@@ -61,7 +71,7 @@ void autentifikacia() {
     } else if(volba == 2) {
         registruj();
     } else {
-        printf("Zle si napisal, ty gej\n");
+        autentifikacia();
     }
 }
 
