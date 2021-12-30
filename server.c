@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#define MAX_POCET_KLIENTOV 5
 
 int main(int argc, char *argv[]) {
 
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    listen(sockfd, 5);
+    listen(sockfd, MAX_POCET_KLIENTOV);
 
     bool skoncil = false;
 
@@ -67,6 +68,10 @@ int main(int argc, char *argv[]) {
             perror("Error writing to socket");
             return 5;
         }
+
+        int i = strncmp("bye", buffer, 3);
+        if(i == 0)
+            break;
 
     }
     close(newsockfd);
