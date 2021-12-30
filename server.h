@@ -5,4 +5,7 @@
 #ifndef SEMESTRALNA_PRACA_POS_SERVER_H
 #define SEMESTRALNA_PRACA_POS_SERVER_H
 
+FILE* otvorSubor(char* nazov);
+int skontrolujMeno(int socket);
+
 #endif //SEMESTRALNA_PRACA_POS_SERVER_H

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include "server.h"
 
 #define MAX_POCET_KLIENTOV 5
 
@@ -52,29 +53,93 @@ int main(int argc, char *argv[]) {
         return 3;
     }
 
+    int jePrihlaseny = 0;
+
     while (!skoncil) {
 
         bzero(buffer, 256);
-        n = read(newsockfd, buffer, 255);
-        if (n < 0) {
-            perror("Error reading from socket");
-            return 4;
+
+        if(jePrihlaseny == 0) {
+            skontrolujMeno(newsockfd);
+            jePrihlaseny++;
+        } else {
+            n = read(newsockfd, buffer, 255);
+            if (n < 0) {
+                perror("Error reading from socket");
+                return 4;
+            }
+
+
+            printf("Here is the message: %s\n", buffer);
+            const char *msg = "I got your message";
+            n = write(newsockfd, msg, strlen(msg) + 1);
+            if (n < 0) {
+                perror("Error writing to socket");
+                return 5;
+            }
+
+            int i = strncmp("bye", buffer, 3);
+            if(i == 0){
+                break;
+            }
         }
-
-        printf("Here is the message: %s\n", buffer);
-        const char *msg = "I got your message";
-        n = write(newsockfd, msg, strlen(msg) + 1);
-        if (n < 0) {
-            perror("Error writing to socket");
-            return 5;
-        }
-
-        int i = strncmp("bye", buffer, 3);
-        if(i == 0)
-            break;
-
     }
     close(newsockfd);
     close(sockfd);
     return 0;
 }
+
+FILE* otvorSubor(char* nazov) {
+    FILE* subor;
+    subor = fopen(nazov, "a+");
+
+    if(subor == NULL) {
+        printf("Nastala chyba pri otvarani suboru\n");
+        return NULL;
+    }
+    return subor;
+}
+
+int skontrolujMeno(int socket) {
+
+    FILE* subor = otvorSubor("prihlaseny.txt");
+
+    char buffMeno[128]; // zo suboru
+    char buffHeslo[128];
+    char buffLogin[128]; // to čo zada pouzivatel
+
+    read(socket, buffLogin, sizeof(buffLogin));
+    printf("Precital som uzivatela\n");
+    printf(buffLogin);
+    while (fscanf(subor, "%s %*s", buffMeno) != EOF) {
+        if(strcmp(buffMeno, buffLogin) == 0) {
+            printf("Pouzivatel s tymto loginom uz existuje!\n");
+            write(socket, "error", sizeof("error"));
+            fclose(subor);
+            skontrolujMeno(socket);
+            return 0;
+        }
+    }
+    //bzero(buffHeslo, 256);
+
+    write(socket, "ok", 2);
+
+    read(socket, buffHeslo, sizeof(buffHeslo));
+
+    if(strncmp(buffHeslo, "error", 5) == 0) {
+        printf("Zle heslo\n");
+        skontrolujMeno(socket);
+        return 0;
+    }
+
+    printf(buffHeslo);
+
+    fprintf(subor,buffLogin);
+    fprintf(subor," ");
+    fprintf(subor,buffHeslo);
+    fprintf(subor,"\n");
+    fclose(subor);
+    return 1;
+}
+
+
