@@ -1,8 +1,0 @@
-//
-// Created by user on 29. 12. 2021.
-//
-
-#ifndef SEMESTRALNA_PRACA_POS_VSTUP_H
-#define SEMESTRALNA_PRACA_POS_VSTUP_H
-
-#endif //SEMESTRALNA_PRACA_POS_VSTUP_H
