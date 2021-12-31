@@ -5,7 +5,7 @@
 #ifndef SEMESTRALNA_PRACA_POS_CLIENT_H
 #define SEMESTRALNA_PRACA_POS_CLIENT_H
 
-void prihlas(int socket);
+int prihlas(int socket);
 int registruj(int socket);
 void autentifikacia(int socket);
 

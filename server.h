@@ -6,6 +6,7 @@
 #define SEMESTRALNA_PRACA_POS_SERVER_H
 
 FILE* otvorSubor(char* nazov);
-int skontrolujMeno(int socket);
+int skontrolujRegistraciu(int socket);
+int skontrolujPrihlasenie(int socket);
 
 #endif //SEMESTRALNA_PRACA_POS_SERVER_H

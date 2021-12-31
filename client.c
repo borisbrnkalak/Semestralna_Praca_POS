@@ -89,58 +89,53 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void prihlas(int socket) {
+int prihlas(int socket) {
     printf("===================\n");
     printf("PRIHLASENIE\n");
     printf("===================\n");
-    char *meno;
-    char *heslo;
-    char buffMeno[128];
-    char buffHeslo[128];
-    bool prihlasilSa = false;
-
+    char meno[128];
+    char heslo[128];
+    char odpoved[128];
 
     printf("\n");
     printf("Zadajte meno: \n");
     scanf("%s", &meno);
 
-    FILE *subor;
-    subor = fopen("prihlaseny.txt", "a+");
+    write(socket, meno, sizeof(meno));
 
-    while (fscanf(subor, "%s %s", buffMeno, buffHeslo) != EOF) {
-        if (strcmp(buffMeno, &meno) == 0) {
-            printf("Prihlasuje sa použivateľ s menom : %s\n", buffMeno);
+    read(socket, odpoved, sizeof(odpoved));
 
-            int pocitadlo = 0;
-
-            while (pocitadlo < 3) {
-                printf("Zadajte heslo: \n");
-                scanf("%s", &heslo);
-                if (strcmp(buffHeslo, &heslo) == 0) {
-                    printf("Prihlasenie USPESNE!!\n");
-                    prihlasilSa = true;
-                    break;
-                } else {
-                    pocitadlo++;
-                    printf("Zle zadane heslo: %d. krat.\n", pocitadlo);
-                    char *odpoved;
-                    printf("Chcete dalej pokracovat? [A/N]\n");
-                    scanf("%s", &odpoved);
-                    if (strcmp(&odpoved, "N") == 0) {
-                        prihlas(socket);
-                    }
-                }
-            }
-        }
-    }
-
-    if (prihlasilSa) {
-        printf("Prihlasil sa pouzivatel: %s, s heslom %s\n", &meno, &heslo);
-    } else {
-        printf("Tento uzivatel neexistuje, skuste to znova.\n");
+    if (strncmp(odpoved, "error", 5) == 0) {
+        printf("%s\n", odpoved);
         prihlas(socket);
+        return 0;
     }
 
+    printf("%s\n", odpoved);
+
+    int pocitadlo = 0;
+
+    while (pocitadlo < 3) {
+        printf("Zadajte svoje heslo: \n");
+        scanf("%s", &heslo);
+
+        write(socket, heslo, sizeof(heslo));
+
+        read(socket, odpoved, sizeof(odpoved));
+
+        if(strncmp(odpoved, "ok", 2) == 0) {
+            printf("%s\n", odpoved);
+            return 1;
+        }
+        pocitadlo++;
+    }
+
+    if(strcmp(odpoved, "error") == 0) {
+        printf("%s\n", odpoved);
+        prihlas(socket);
+        return 0;
+    }
+    return 0;
 }
 
 int registruj(int socket) {
@@ -189,15 +184,17 @@ void autentifikacia(int socket) {
     printf("1 -- prihlasenie\n");
     printf("2 -- registracia\n");
     printf("---------------------------------------------\n");
-    int volba;
+    char volba[20];
 
-    scanf("%d", &volba);
+    scanf("%s", &volba);
 
-    if (volba == 1) {
+    write(socket, volba, sizeof(volba));
+
+    if (strncmp(volba, "a", 1) == 0) {
         prihlas(socket);
-    } else if (volba == 2) {
+    } else if (strncmp(volba, "b", 1) == 0) {
         registruj(socket);
-    } else if (volba == 3) {
+    } else if (strncmp(volba, "c", 1) == 0) {
         exit(5);
     } else {
         autentifikacia(socket);
