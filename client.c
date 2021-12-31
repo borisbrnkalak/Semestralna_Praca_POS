@@ -7,9 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include "server.h"
 #include "client.h"
-
 
 int main(int argc, char *argv[]) {
     int sockfd, n;
@@ -57,6 +55,7 @@ int main(int argc, char *argv[]) {
 
         if (jePrihlaseny == 0) {
             autentifikacia(sockfd);
+            fgets(buffer, 255, stdin);
             jePrihlaseny++;
         }
 
@@ -106,7 +105,8 @@ int prihlas(int socket) {
     read(socket, odpoved, sizeof(odpoved));
 
     if (strncmp(odpoved, "error", 5) == 0) {
-        printf("%s\n", odpoved);
+        //printf("%s\n", odpoved);
+        printf("Tento pouzivatel neexistuje!\n");
         prihlas(socket);
         return 0;
     }
@@ -127,6 +127,7 @@ int prihlas(int socket) {
             printf("%s\n", odpoved);
             return 1;
         }
+
         pocitadlo++;
     }
 
@@ -160,7 +161,7 @@ int registruj(int socket) {
         registruj(socket);
         return 0;
     }
-    printf("Zadajtes svoje heslo\n");
+    printf("Zadajte svoje heslo\n");
     scanf("%s", &heslo);
 
     printf("Potvrdte svoje heslo\n");
@@ -181,8 +182,9 @@ int registruj(int socket) {
 
 void autentifikacia(int socket) {
     printf("Zadajte volbu, co chcete aby sa stalo:\n");
-    printf("1 -- prihlasenie\n");
-    printf("2 -- registracia\n");
+    printf("[a] -- prihlasenie\n");
+    printf("[b] -- registracia\n");
+    printf("[c] -- zmyzanie uctu\n");
     printf("---------------------------------------------\n");
     char volba[20];
 
@@ -195,9 +197,76 @@ void autentifikacia(int socket) {
     } else if (strncmp(volba, "b", 1) == 0) {
         registruj(socket);
     } else if (strncmp(volba, "c", 1) == 0) {
-        exit(5);
+        //exit(5);
+        odhlasenie(socket);
     } else {
         autentifikacia(socket);
     }
 }
 
+int odhlasenie(int socket) {
+    char meno[128];
+    char heslo[128];
+    char odpoved[10];
+
+    printf("Zadajte meno na zrusenie uctu\n");
+    scanf("%s", &meno);
+
+    write(socket, meno, sizeof(meno));
+
+    read(socket, odpoved, sizeof(odpoved));
+
+    if(strcmp(odpoved, "error") == 0) {
+        printf("%s\n", odpoved);
+        odhlasenie(socket);
+        return 0;
+    }
+
+    printf("Zadajte svoje heslo\n");
+    scanf("%s", &heslo);
+
+    write(socket, heslo, sizeof(heslo));
+
+    read(socket, odpoved, sizeof(odpoved));
+
+    if(strcmp(odpoved, "error") == 0) {
+        printf("%s\n", odpoved);
+        odhlasenie(socket);
+        return 0;
+    }
+
+    printf("%s\n", odpoved);
+    return 1;
+
+}
+
+void volby(int socket){
+    printf("Vyberte si moznost, ktoru chcete robit: \n");
+    printf("[a] -- Chatovanie\n");
+    printf("[b] -- Odhlasenie\n");
+    printf("[C] -- Zrusenie uctu\n");
+    printf("[d] -- Zoznam priatelov\n");
+    printf("[e] -- Pridat Priatela\n");
+    printf("[f] -- Odstranit priatela\n");
+    printf("--------------------------------------------\n");
+
+    char volba[10];
+
+    scanf("%s", volba);
+
+    if(strncmp(volba, "a", 1) == 0) {
+        // chatovanie
+    } else if(strncmp(volba, "b", 1) == 0) {
+        prihlas(socket);
+    } else if(strncmp(volba, "c", 1) == 0) {
+        // Zrus ucet
+    } else if(strncmp(volba, "d", 1) == 0) {
+        // zoznam priatelov
+    } else if(strncmp(volba, "e", 1) == 0) {
+        // pridaj priatela
+    } else if(strncmp(volba, "f", 1) == 0) {
+        // odstran priatela
+    } else {
+        volby(socket);
+    }
+}

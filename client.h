@@ -7,6 +7,7 @@
 
 int prihlas(int socket);
 int registruj(int socket);
+int odhlasenie(int socket);
 void autentifikacia(int socket);
 
 #endif //SEMESTRALNA_PRACA_POS_CLIENT_H

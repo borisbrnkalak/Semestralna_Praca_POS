@@ -8,5 +8,7 @@
 FILE* otvorSubor(char* nazov);
 int skontrolujRegistraciu(int socket);
 int skontrolujPrihlasenie(int socket);
+int vymazanieUctu(int socket);
+
 
 #endif //SEMESTRALNA_PRACA_POS_SERVER_H

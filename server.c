@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
     cli_len = sizeof(cli_addr);
 
     newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &cli_len);
-
     if (newsockfd < 0) {
         perror("ERROR on accept");
         return 3;
@@ -57,7 +56,6 @@ int main(int argc, char *argv[]) {
 
     while (!skoncil) {
 
-        bzero(buffer, 256);
 
         if (jePrihlaseny == 0) {
 
@@ -65,13 +63,16 @@ int main(int argc, char *argv[]) {
             char odpoved[20];
 
             read(newsockfd, volba, sizeof(volba));
-            if(strncmp(volba, "a", 1) == 0) {
+            if (strncmp(volba, "a", 1) == 0) {
                 skontrolujPrihlasenie(newsockfd);
-            } else if(strncmp(volba, "b", 1) == 0) {
+            } else if (strncmp(volba, "b", 1) == 0) {
                 skontrolujRegistraciu(newsockfd);
+            } else if(strncmp(volba, "c", 1) == 0) {
+                vymazanieUctu(newsockfd);
             }
             jePrihlaseny++;
         } else {
+            bzero(buffer, 256);
             n = read(newsockfd, buffer, 255);
             if (n < 0) {
                 perror("Error reading from socket");
@@ -80,6 +81,7 @@ int main(int argc, char *argv[]) {
 
 
             printf("Here is the message: %s\n", buffer);
+
             const char *msg = "I got your message";
             n = write(newsockfd, msg, strlen(msg) + 1);
             if (n < 0) {
@@ -165,10 +167,10 @@ int skontrolujPrihlasenie(int socket) {
         if (strcmp(buffSuborMeno, buffZadaneMeno) == 0) {
 
             write(socket, "ok", 2);
-            while(pocitadlo < 3) {
+            while (pocitadlo < 3) {
                 read(socket, buffZadaneHeslo, sizeof(buffZadaneHeslo));
 
-                if(strcmp(buffZadaneHeslo, buffSuborHeslo) == 0) {
+                if (strcmp(buffZadaneHeslo, buffSuborHeslo) == 0) {
                     printf("Prihlasenie uspesne!\n");
                     write(socket, "ok", 2);
                     fclose(subor);
@@ -179,10 +181,6 @@ int skontrolujPrihlasenie(int socket) {
                 }
             }
         }
-        /*write(socket, "ok", sizeof("ok"));
-        fclose(subor);
-        return 0;*/
-
     }
     printf("Pouzivatelovi sa nepodarilo prihlasit!\n");
     write(socket, "error", sizeof("error"));
@@ -191,31 +189,92 @@ int skontrolujPrihlasenie(int socket) {
     return 0;
 }
 
-/*
- *
- *  while (fscanf(subor, "%s %s", buffMeno, buffHeslo) != EOF) {
-        if (strcmp(buffMeno, &meno) == 0) {
-            printf("Prihlasuje sa použivateľ s menom : %s\n", buffMeno);
+int vymazanieUctu(int socket) {
+    char menoSuboru[128] = "prihlaseny.txt";
+    char menoSuboru2[128] = "temp.txt";
+    FILE *subor = fopen(menoSuboru, "a+");
+    FILE *suborTmp = fopen(menoSuboru2, "a+");
 
-            int pocitadlo = 0;
+    char string[256];
+    char buffSuborMeno[128];
+    char buffSuborHeslo[128];
+    char buffZadaneMeno[128];
+    char buffZadaneHeslo[128];
 
-            while (pocitadlo < 3) {
-                printf("Zadajte heslo: \n");
-                scanf("%s", &heslo);
-                if (strcmp(buffHeslo, &heslo) == 0) {
-                    printf("Prihlasenie USPESNE!!\n");
-                    prihlasilSa = true;
-                    break;
-                } else {
-                    pocitadlo++;
-                    printf("Zle zadane heslo: %d. krat.\n", pocitadlo);
-                    char *odpoved;
-                    printf("Chcete dalej pokracovat? [A/N]\n");
-                    scanf("%s", &odpoved);
-                    if (strcmp(&odpoved, "N") == 0) {
-                        prihlas(socket);
+    if (!subor) {
+        printf("Error with opening file!\n");
+        return 0;
+    }
+
+    if (!suborTmp) {
+        printf("Error with opening tmp file!\n");
+    }
+
+    read(socket, buffZadaneMeno, sizeof(buffZadaneMeno));
+
+    int nasielSa = 0;
+
+    while (fscanf(subor, " %s %s", buffSuborMeno, buffSuborHeslo) == 2) {
+
+        if (strcmp(buffZadaneMeno, buffSuborMeno) == 0) {
+            write(socket, "ok", 2);
+
+            read(socket, buffZadaneHeslo, sizeof(buffZadaneHeslo));
+
+            if (strcmp(buffZadaneHeslo, buffSuborHeslo) == 0) {
+                write(socket, "ok", 2);
+
+                nasielSa = 1;
+
+                break;
+
+                /*while (!feof(subor)) {
+                    strcpy(string, "\0"); //vynuluje kopirovany riadok
+                    fgets(string, 256, subor); // vlozi do vynulovaneho meno a heslo
+                    if (!feof(subor)) {
+                        if (strcmp(buffZadaneMeno, buffSuborMeno) != 0 && strcmp(buffZadaneHeslo, buffSuborHeslo) !=
+                                                                          0) { // ak sa meno heslo nerovna zadanemu tak ten riadok skopiruje do durheho suboru
+                            fprintf(suborTmp, "%s", string); // do temporary suboru zapise string
+                        }
                     }
                 }
+                rename(menoSuboru2, menoSuboru);
+                fclose(subor);
+                fclose(suborTmp);
+                remove(menoSuboru); //vymaze povodny
+                rename(menoSuboru2, menoSuboru); // premenuje docasny na povodny
+                return 1;*/
+            }
+
+        }
+
+    }
+
+    fclose(subor);
+
+    subor = fopen(menoSuboru, "a+");
+
+    if(nasielSa == 1) {
+        while (fscanf(subor, " %s %s", buffSuborMeno, buffSuborHeslo) == 2) {
+            if(strcmp(buffZadaneMeno, buffSuborMeno) != 0) {
+                fprintf(suborTmp, buffSuborMeno);
+                fprintf(suborTmp, " ");
+                fprintf(suborTmp, buffSuborHeslo);
+                fprintf(suborTmp, "\n");
             }
         }
- */
+        remove(menoSuboru);
+        rename(menoSuboru2, menoSuboru);
+        fclose(subor);
+        fclose(suborTmp);
+        return 1;
+    }
+
+    /*write(socket, "error", 5);
+    fclose(subor);
+    fclose(suborTmp);
+    vymazanieUctu(socket);
+    return 0;*/
+}
+
+
