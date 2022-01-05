@@ -9,6 +9,11 @@
 #include <stdbool.h>
 #include "client.h"
 
+int vypnutySocket = 0;
+
+char prihlaseny[128];
+int jePrihlaseny = 0;
+
 int main(int argc, char *argv[]) {
     int sockfd, n;
     struct sockaddr_in serv_addr;
@@ -49,39 +54,48 @@ int main(int argc, char *argv[]) {
         return 4;
     }
 
-    int jePrihlaseny = 0;
-
     while (!konci) {
 
         if (jePrihlaseny == 0) {
             autentifikacia(sockfd);
+            if(vypnutySocket == 1){
+                printf("INFO:   Program sa vypol\n");
+                return 0;
+            }
+            //fgets(buffer, 255, stdin);
+
+            //printf(buffer);
+        }
+       else {
+
+            printf("Please enter a message: ");
+            bzero(buffer, 256);
             fgets(buffer, 255, stdin);
-            jePrihlaseny++;
-        }
-
-        printf("Please enter a message: ");
-        bzero(buffer, 256);
-        fgets(buffer, 255, stdin);
 
 
-        n = write(sockfd, buffer, strlen(buffer));
-        if (n < 0) {
-            perror("Error writing to socket");
-            return 5;
-        }
+            n = write(sockfd, buffer, strlen(buffer));
+            if (n < 0) {
+                perror("Error writing to socket");
 
-        int i = strncmp("bye", buffer, 3);
-        if (i == 0)
-            break;
+                return 5;
+            }
 
-        bzero(buffer, 256);
-        n = read(sockfd, buffer, 255);
-        if (n < 0) {
-            perror("Error reading from socket");
-            return 6;
-        }
-        printf("%s\n", buffer);
+           int i = strncmp("bye\n", buffer, 4);
+           if (i == 0){
+               //printf("napisal bye. \n");
 
+               menuPouzivatela(sockfd);
+               continue;
+           }
+
+            bzero(buffer, 256);
+            n = read(sockfd, buffer, 255);
+            if (n < 0) {
+                perror("Error reading from socket");
+                return 6;
+            }
+            printf("%s\n", buffer);;
+       }
     }
     close(sockfd);
 
@@ -102,11 +116,11 @@ int prihlas(int socket) {
 
     write(socket, meno, sizeof(meno));
 
+    bzero(odpoved, sizeof(odpoved));
     read(socket, odpoved, sizeof(odpoved));
 
-    if (strncmp(odpoved, "error", 5) == 0) {
-        //printf("%s\n", odpoved);
-        printf("Tento pouzivatel neexistuje!\n");
+    if (strncmp(odpoved, "error", 5) == 0 || strncmp(odpoved, "ok", 2) != 0) {
+        printf("INFO:   Tento pouzivatel neexistuje!\n");
         prihlas(socket);
         return 0;
     }
@@ -121,16 +135,19 @@ int prihlas(int socket) {
 
         write(socket, heslo, sizeof(heslo));
 
+        bzero(odpoved, sizeof(odpoved));
         read(socket, odpoved, sizeof(odpoved));
 
         if(strncmp(odpoved, "ok", 2) == 0) {
             printf("%s\n", odpoved);
+            strcpy(prihlaseny, meno);
+            jePrihlaseny = 1;
+            menuPouzivatela(socket);
             return 1;
         }
 
         pocitadlo++;
     }
-
     if(strcmp(odpoved, "error") == 0) {
         printf("%s\n", odpoved);
         prihlas(socket);
@@ -154,6 +171,7 @@ int registruj(int socket) {
     scanf("%s", &meno);
     write(socket, meno, sizeof(meno));
 
+    bzero(odpoved, sizeof(odpoved));
     read(socket, odpoved, sizeof(odpoved));
 
     if (strcmp(odpoved, "error") == 0) {
@@ -164,31 +182,72 @@ int registruj(int socket) {
     printf("Zadajte svoje heslo\n");
     scanf("%s", &heslo);
 
-    printf("Potvrdte svoje heslo\n");
+    printf("*******Potvrdte svoje heslo*******\n");
     scanf("%s", &potvrdenie);
 
 
     if (strcmp(heslo, potvrdenie) == 0) {
-        printf("Dobre heslo\n");
+        printf("INFO:   Dobre heslo\n");
         write(socket, heslo, sizeof(heslo));
     } else {
         write(socket, "error", strlen("error"));
         registruj(socket);
         return 0;
     }
-
+    jePrihlaseny = 1;
+    menuPouzivatela(socket);
     return 1;
+}
+
+int chatovanie(int socket){
+
+}
+
+int odhlasitSa(int socket){
+    memset(prihlaseny, 0, sizeof(prihlaseny));
+    jePrihlaseny = 0;
+    write(socket, "odhlaseny", strlen("odhlaseny"));
+    return 1;
+}
+
+int menuPouzivatela(int socket) {
+    printf("Zadajte volbu, co chcete aby sa stalo:\n");
+    printf("[a] -- chatovat\n");
+    printf("[b] -- zobrazit priatelov\n");
+    printf("[c] -- odhlasit sa\n");
+    printf("---------------------------------------------\n");
+    char volba[20];
+    bzero(volba, 20);
+    scanf("%s", &volba);
+
+    while((getchar()) != '\n');
+
+    write(socket, volba, sizeof(volba));
+
+    if (strncmp(volba, "a", 1) == 0) {
+        return 1;
+    } else if(strncmp(volba, "c", 1) == 0){
+        odhlasitSa(socket);
+        return 3;
+    }
+    else {
+        menuPouzivatela(socket);
+        return 0;
+    }
 }
 
 void autentifikacia(int socket) {
     printf("Zadajte volbu, co chcete aby sa stalo:\n");
     printf("[a] -- prihlasenie\n");
     printf("[b] -- registracia\n");
-    printf("[c] -- zmyzanie uctu\n");
+    printf("[c] -- zmazanie uctu\n");
+    printf("[x] -- vypnuť program\n");
     printf("---------------------------------------------\n");
     char volba[20];
 
     scanf("%s", &volba);
+
+    while((getchar()) != '\n');
 
     write(socket, volba, sizeof(volba));
 
@@ -197,14 +256,18 @@ void autentifikacia(int socket) {
     } else if (strncmp(volba, "b", 1) == 0) {
         registruj(socket);
     } else if (strncmp(volba, "c", 1) == 0) {
-        //exit(5);
-        odhlasenie(socket);
+        zmazanieUctu(socket);
+    } else if (strncmp(volba, "x", 1) == 0) {
+        vypnut(socket);
     } else {
         autentifikacia(socket);
     }
 }
-
-int odhlasenie(int socket) {
+int vypnut(int socket) {
+    close(socket);
+    return vypnutySocket = 1;
+}
+int zmazanieUctu(int socket) {
     char meno[128];
     char heslo[128];
     char odpoved[10];
@@ -214,11 +277,12 @@ int odhlasenie(int socket) {
 
     write(socket, meno, sizeof(meno));
 
+    bzero(odpoved, sizeof(odpoved));
     read(socket, odpoved, sizeof(odpoved));
 
     if(strcmp(odpoved, "error") == 0) {
         printf("%s\n", odpoved);
-        odhlasenie(socket);
+        zmazanieUctu(socket);
         return 0;
     }
 
@@ -227,46 +291,20 @@ int odhlasenie(int socket) {
 
     write(socket, heslo, sizeof(heslo));
 
+    bzero(odpoved, sizeof(odpoved));
     read(socket, odpoved, sizeof(odpoved));
 
     if(strcmp(odpoved, "error") == 0) {
         printf("%s\n", odpoved);
-        odhlasenie(socket);
+        zmazanieUctu(socket);
         return 0;
     }
 
-    printf("%s\n", odpoved);
-    return 1;
-
-}
-
-void volby(int socket){
-    printf("Vyberte si moznost, ktoru chcete robit: \n");
-    printf("[a] -- Chatovanie\n");
-    printf("[b] -- Odhlasenie\n");
-    printf("[C] -- Zrusenie uctu\n");
-    printf("[d] -- Zoznam priatelov\n");
-    printf("[e] -- Pridat Priatela\n");
-    printf("[f] -- Odstranit priatela\n");
-    printf("--------------------------------------------\n");
-
-    char volba[10];
-
-    scanf("%s", volba);
-
-    if(strncmp(volba, "a", 1) == 0) {
-        // chatovanie
-    } else if(strncmp(volba, "b", 1) == 0) {
-        prihlas(socket);
-    } else if(strncmp(volba, "c", 1) == 0) {
-        // Zrus ucet
-    } else if(strncmp(volba, "d", 1) == 0) {
-        // zoznam priatelov
-    } else if(strncmp(volba, "e", 1) == 0) {
-        // pridaj priatela
-    } else if(strncmp(volba, "f", 1) == 0) {
-        // odstran priatela
-    } else {
-        volby(socket);
+    if(strcmp(odpoved,"ok") == 0){
+        printf("%s\n", odpoved);
+        printf("INFO:   Uspesne ste zmazali ucet pouzivatela %s: \n", meno);
     }
+
+    autentifikacia(socket);
+    return 1;
 }
