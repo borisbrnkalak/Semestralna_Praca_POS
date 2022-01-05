@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h>
 #include "server.h"
 #include <pthread.h>
 
@@ -88,6 +87,7 @@ void *handle_client(void *arg) {
 
         if(strncmp(buffer,"odhlaseny",9 ) == 0) {
             printf("INFO:   Pouzivatel sa odhlasil. \n");
+            memset(cli->aktualnePrihlaseny, 0, sizeof(cli->aktualnePrihlaseny));
             cli->jePrihlaseny = 0;
         }
         if (cli->jePrihlaseny == 0) {
@@ -110,6 +110,11 @@ void *handle_client(void *arg) {
                 vymazanieUctu(cli->sockfd, cli);
             } else if(strncmp(buffer, "x", 1) == 0){
                 printf("INFO:   Klient sa odpojil\n");
+                close(cli->sockfd);
+                queue_remove(cli->uid);
+                free(cli);
+                cli_count--;
+                pthread_detach(pthread_self());
                 return 6;
             } else {
                 cli->jePrihlaseny = 0;
@@ -260,6 +265,7 @@ int skontrolujRegistraciu(int socket, client_t* cli) {
     fprintf(subor, "\n");
     fclose(subor);
 
+    strcpy(cli->aktualnePrihlaseny, buffLogin);
     cli->jePrihlaseny = 1;
     return 1;
 }
@@ -275,8 +281,19 @@ int skontrolujPrihlasenie(int socket, client_t* cli) {
     bzero(buffZadaneMeno, sizeof(buffZadaneMeno));
     read(socket, buffZadaneMeno, sizeof(buffZadaneMeno));
 
+    int nachadzaSaUzivatel = 0;
+    int index = 0;
+    while(index < cli_count) {
+        if(strcmp(clients[index]->aktualnePrihlaseny, buffZadaneMeno) == 0) {
+            nachadzaSaUzivatel = 1;
+            break;
+        } else {
+            index++;
+        }
+    }
+
     int pocitadlo = 0;
-    while (fscanf(subor, "%s %s", buffSuborMeno, buffSuborHeslo) != EOF) {
+    while (fscanf(subor, "%s %s", buffSuborMeno, buffSuborHeslo) != EOF && nachadzaSaUzivatel == 0) {
         if (strcmp(buffSuborMeno, buffZadaneMeno) == 0) {
             write(socket, "ok", 2);
             while (pocitadlo < 3) {
@@ -287,6 +304,7 @@ int skontrolujPrihlasenie(int socket, client_t* cli) {
                     printf("INFO:   Prihlasenie uzivatela %s uspesne!\n",buffZadaneMeno);
                     write(socket, "ok", 2);
                     fclose(subor);
+                    strcpy(cli->aktualnePrihlaseny, buffZadaneMeno);
                     cli->jePrihlaseny = 1;
                     return 1;
                 } else {
