@@ -14,6 +14,8 @@ int vypnutySocket = 0;
 char prihlaseny[128];
 int jePrihlaseny = 0;
 
+int vysledok = 0;
+
 int main(int argc, char *argv[]) {
     int sockfd, n;
     struct sockaddr_in serv_addr;
@@ -54,6 +56,7 @@ int main(int argc, char *argv[]) {
         return 4;
     }
 
+
     while (!konci) {
 
         if (jePrihlaseny == 0) {
@@ -65,8 +68,11 @@ int main(int argc, char *argv[]) {
             //fgets(buffer, 255, stdin);
 
             //printf(buffer);
-        }
-       else {
+        } else {
+
+            if(vysledok =! 1) {
+                continue;
+            }
 
             printf("Please enter a message: ");
             bzero(buffer, 256);
@@ -203,6 +209,44 @@ int chatovanie(int socket){
 
 }
 
+int pridajPriatela(int socket) {
+
+    char pouzivatelia[128];
+    char menoUsera[128];
+    char odpoved[128];
+
+    printf("AKTUALNE REGISTROVANY POUZIVATELIA:\n");
+    printf("------------------------------------------------\n");
+
+    while(1) {
+        bzero(pouzivatelia, sizeof(pouzivatelia));
+        read(socket, pouzivatelia, sizeof(pouzivatelia));
+
+        if(strcmp("koniec", pouzivatelia) == 0) {
+            break;
+        }
+        printf("%s\n", pouzivatelia);
+    }
+
+    while (1) {
+        printf("Zadajte meno, koho chcete pridat\n");
+        scanf("%s", &menoUsera);
+        write(socket, menoUsera, sizeof(menoUsera));
+
+        bzero(odpoved, sizeof(odpoved));
+        read(socket, odpoved,sizeof(odpoved));
+
+        if(strncmp(odpoved, "ok", 2) == 0) {
+            vysledok = 2;
+            menuPouzivatela(socket);
+            break;
+        } else {
+            continue;
+        }
+
+    }
+}
+
 int odhlasitSa(int socket){
     memset(prihlaseny, 0, sizeof(prihlaseny));
     jePrihlaseny = 0;
@@ -213,8 +257,9 @@ int odhlasitSa(int socket){
 int menuPouzivatela(int socket) {
     printf("Zadajte volbu, co chcete aby sa stalo:\n");
     printf("[a] -- chatovat\n");
-    printf("[b] -- zobrazit priatelov\n");
-    printf("[c] -- odhlasit sa\n");
+    printf("[b] -- pridat priatelov\n");
+    printf("[c] -- odstranit priatelov\n");
+    printf("[d] -- odhlasit sa\n");
     printf("---------------------------------------------\n");
     char volba[20];
     bzero(volba, 20);
@@ -225,8 +270,11 @@ int menuPouzivatela(int socket) {
     write(socket, volba, sizeof(volba));
 
     if (strncmp(volba, "a", 1) == 0) {
+        vysledok = 1;
         return 1;
-    } else if(strncmp(volba, "c", 1) == 0){
+    } else if(strncmp(volba, "b", 1) == 0) {
+        pridajPriatela(socket);
+    } else if(strncmp(volba, "d", 1) == 0){
         odhlasitSa(socket);
         return 3;
     }

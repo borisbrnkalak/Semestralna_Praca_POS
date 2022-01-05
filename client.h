@@ -12,5 +12,6 @@ int zmazanieUctu(int socket);
 void autentifikacia(int socket);
 int menuPouzivatela(int socket);
 int vypnut(int socket);
+int pridajPriatela(int socket);
 
 #endif //SEMESTRALNA_PRACA_POS_CLIENT_H
