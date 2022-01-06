@@ -62,6 +62,69 @@ void send_message(char *s, int uid){
     pthread_mutex_unlock(&clients_mutex);
 }
 
+int ukazZiadostOpriatelstvo(int socket, client_t* cli){
+    char pouzivatel[128];
+    char prihlaseny[128];
+    char odpovedKlienta[128];
+
+    FILE* subor = otvorSubor("priatelskaListina.txt");
+    //rewind(subor);
+
+    int malDajake = 0;
+    while(fscanf(subor, "%s %s", pouzivatel, prihlaseny) != EOF) {
+
+        if(strcmp(cli->aktualnePrihlaseny, prihlaseny) == 0) {
+            malDajake = 1;
+            write(socket, pouzivatel, sizeof(pouzivatel)); // napis klientovi uzivatela ktory si ho chce pridat
+
+            bzero(odpovedKlienta, sizeof(odpovedKlienta));
+            read(socket,odpovedKlienta, sizeof(odpovedKlienta));// odpoved ci klient potvrdil ziadost
+
+            if(strcmp(odpovedKlienta,"a") == 0){
+                printf("INFO    %s potvrdil žiadosť od %s\n", prihlaseny, pouzivatel);
+                zapisDoFriendList(prihlaseny, pouzivatel);
+
+            } else if (strcmp(odpovedKlienta,"o") == 0){
+                printf("INFO    %s nepotvrdil žiadosť od %s\n", prihlaseny, pouzivatel);
+                continue;
+            }
+        }
+    }
+    if(malDajake == 1){
+        premazListinu(cli);
+        write(socket,"empty",strlen("empty"));
+    } else {
+        write(socket,"empty",strlen("empty"));
+    }
+    fclose(subor);
+}
+
+int premazListinu(client_t* cli) {
+    FILE *subor = otvorSubor("priatelskaListina.txt");
+    FILE *suborTmp = otvorSubor("temp.txt");
+    char buffListinaLavaStrana[128];
+    char buffListinaPravaStrana[128];
+
+    if (!suborTmp) {
+        printf("Error with opening tmp file!\n");
+        return 0;
+    }
+
+    while (fscanf(subor,"%s %s",buffListinaLavaStrana,buffListinaPravaStrana) == 2) { // prechadza Listinu
+        if(strcmp(buffListinaPravaStrana,cli->aktualnePrihlaseny) != 0){ // ak sa nacitany riadok nerovna prihlasenemu
+            fprintf(suborTmp, buffListinaLavaStrana);
+            fprintf(suborTmp, " ");                             // tak sa to zapise do tmp suboru
+            fprintf(suborTmp, buffListinaPravaStrana);
+            fprintf(suborTmp, "\n");
+        }
+    } // end WHILE
+    fclose(subor);
+    fclose(suborTmp);
+    remove("priatelskaListina.txt");
+    rename("temp.txt", "priatelskaListina.txt");
+    return 1;
+}
+
 int pridajNovehoPriatela(int socket, client_t* cli) {
 
     char pouzivatel[128];
@@ -69,7 +132,7 @@ int pridajNovehoPriatela(int socket, client_t* cli) {
 
     FILE* subor = otvorSubor("prihlaseny.txt");
 
-    while(fscanf(subor, "%s %*s", buffer) != EOF) {
+    while(fscanf(subor, "%s %*s", buffer) != EOF) { // vypise registrovanych
         if(strcmp(cli->aktualnePrihlaseny, buffer) != 0) {
             write(socket, buffer, sizeof(pouzivatel));
         }
@@ -82,7 +145,10 @@ int pridajNovehoPriatela(int socket, client_t* cli) {
         int nasielSa = 0;
         bzero(pouzivatel, sizeof(pouzivatel));
         read(socket, pouzivatel, sizeof(pouzivatel));
-        printf("---- %s\n", pouzivatel);
+
+        if(strcmp(pouzivatel,"bye") == 0){
+            break;
+        }
 
         rewind(subor);
         while(fscanf(subor, "%s %*s", buffer) != EOF) {
@@ -92,22 +158,63 @@ int pridajNovehoPriatela(int socket, client_t* cli) {
             }
         }
         if(nasielSa == 1) {
-            FILE* subor2 = otvorSubor("priatelskaListina.txt");
-            fprintf(subor2, cli->aktualnePrihlaseny);
-            fprintf(subor2, " ");
-            fprintf(subor2, buffer);
-            fprintf(subor2, "\n");
-            fclose(subor2);
+            int mozeZapisat = prejdiFriendList(buffer,cli);
+            if(mozeZapisat == 1){
+                FILE* subor2 = otvorSubor("priatelskaListina.txt");
+                fprintf(subor2, cli->aktualnePrihlaseny); // odosielatel
+                fprintf(subor2, " ");
+                fprintf(subor2, buffer); // prijmatel
+                fprintf(subor2, "\n");
+                fclose(subor2);
 
-
-            bzero(buffer, sizeof(buffer));
-            write(socket, "ok", 2);
-            printf("Nasiel sa typek\n");
+                printf("Nasiel sa typek\n");
+                bzero(buffer, sizeof(buffer));
+                write(socket, "ok", 2);
+            } else if(mozeZapisat == 0){
+                write(socket, "already friend", strlen("already friend"));
+            }
             break;
         }
         write(socket, "error", strlen("error"));
     }
     return 8;
+}
+
+int prejdiFriendList(char* prijmatel,client_t* cli){
+    char* buffMeno1[128];
+    char* buffMeno2[128];
+    FILE *suborFriendList = otvorSubor("friendList.txt");
+
+    while(fscanf(suborFriendList,"%s %s", buffMeno1,buffMeno2) == 2){
+        if(((strcmp(buffMeno1,prijmatel) == 0) || (strcmp(buffMeno1,cli->aktualnePrihlaseny) == 0))
+           && ((strcmp(buffMeno2,cli->aktualnePrihlaseny) == 0) || (strcmp(buffMeno2,prijmatel) == 0))) {
+            printf("INFO    Uz maju priatelstvo\n");
+            close(suborFriendList);
+            rewind(suborFriendList);
+            return 0;
+        }
+    }
+    close(suborFriendList);
+    return 1;
+}
+
+void posliZoznamPriatelov(int socket, client_t* cli){
+    char buffMeno1[128];
+    char buffMeno2[128];
+
+    FILE* subor = otvorSubor("friendList.txt");
+    rewind(subor);
+
+    while(fscanf(subor, "%s %s", buffMeno1, buffMeno2) == 2) {
+        if((strcmp(cli->aktualnePrihlaseny, buffMeno1) == 0)) {
+            write(socket, buffMeno2, sizeof(buffMeno2));
+        }
+        if((strcmp(cli->aktualnePrihlaseny, buffMeno2) == 0)){
+            write(socket, buffMeno1, sizeof(buffMeno1));
+        }
+    }
+    fclose(subor);
+    write(socket, "koniec", strlen("koniec"));
 }
 
 void *handle_client(void *arg) {
@@ -123,9 +230,15 @@ void *handle_client(void *arg) {
 
     while (1) {
 
-        if(strcmp(volba, "b") != 0) {
-            bzero(buffer, 256);
-            n = read(cli->sockfd, buffer, sizeof(buffer));
+        if(strcmp(volba, "b") != 0 ) {
+            if(strcmp(volba, "e") != 0){
+                if(strcmp(volba, "f") != 0){
+                    if(strcmp(volba, "c") != 0) {
+                        bzero(buffer, 256);
+                        n = read(cli->sockfd, buffer, sizeof(buffer));
+                    }
+                }
+            }
         }
 
         if (n < 0) {
@@ -154,7 +267,7 @@ void *handle_client(void *arg) {
                 read(cli->sockfd, volba, sizeof(volba));
 
                 //printf("Volba bola: %s\n",volba);
-            } else if(strncmp(buffer, "c", 1) == 0) {
+            }else if(strncmp(buffer, "c", 1) == 0) {
                 vymazanieUctu(cli->sockfd, cli);
             } else if(strncmp(buffer, "x", 1) == 0){
                 printf("INFO:   Klient sa odpojil\n");
@@ -188,7 +301,18 @@ void *handle_client(void *arg) {
                     }
                 }
             } else if(strncmp(volba, "b", 1) == 0) {
+
                 pridajNovehoPriatela(cli->sockfd, cli);
+                bzero(volba, sizeof(volba));
+                read(cli->sockfd,volba,sizeof (volba));
+
+            } else if(strncmp(volba, "f", 1) == 0) {
+                posliZoznamPriatelov(cli->sockfd, cli);
+                bzero(volba, sizeof(volba));
+                read(cli->sockfd,volba,sizeof (volba));
+            }else if(strncmp(volba, "e", 1) == 0) {
+
+                ukazZiadostOpriatelstvo(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));
             }
@@ -372,6 +496,28 @@ int skontrolujPrihlasenie(int socket, client_t* cli) {
     fclose(subor);
     skontrolujPrihlasenie(socket, cli);
     return 0;
+}
+
+int zapisDoFriendList(char* pouzivatel, char* priatel){
+    char* buffPouzivatel[128];
+    char* buffPriatel[128];
+    FILE *suborFriendList = otvorSubor("friendList.txt");
+
+    while(fscanf(suborFriendList,"%s %s",buffPouzivatel,buffPriatel) == 2){
+        if(((strcmp(buffPouzivatel,pouzivatel) == 0) || (strcmp(buffPouzivatel,priatel) == 0))
+           && ((strcmp(buffPriatel,pouzivatel) == 0) || (strcmp(buffPriatel,priatel) == 0))) {
+            printf("INFO    Uz maju priatelstvo\n");
+            return 0;
+        }
+    }
+    fprintf(suborFriendList, priatel);
+    fprintf(suborFriendList, " ");
+    fprintf(suborFriendList, pouzivatel);
+    fprintf(suborFriendList, "\n");
+
+    fclose(suborFriendList);
+
+    return 1;
 }
 
 int vymazanieUctu(int socket, client_t* cli) {

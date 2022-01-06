@@ -86,13 +86,13 @@ int main(int argc, char *argv[]) {
                 return 5;
             }
 
-           int i = strncmp("bye\n", buffer, 4);
-           if (i == 0){
-               //printf("napisal bye. \n");
+            int i = strncmp("bye\n", buffer, 4);
+            if (i == 0){
+                //printf("napisal bye. \n");
 
-               menuPouzivatela(sockfd);
-               continue;
-           }
+                menuPouzivatela(sockfd);
+                continue;
+            }
 
             bzero(buffer, 256);
             n = read(sockfd, buffer, 255);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
                 return 6;
             }
             printf("%s\n", buffer);;
-       }
+        }
     }
     close(sockfd);
 
@@ -209,6 +209,51 @@ int chatovanie(int socket){
 
 }
 
+int ziadostiPriatelov(int socket) {
+    char potvrdenie[128];
+    char menoUzivatela[128];
+
+    while(1){
+        bzero(menoUzivatela, sizeof(menoUzivatela));
+        read(socket,menoUzivatela, sizeof(menoUzivatela));
+        if(strcmp(menoUzivatela,"empty") != 0){
+            printf("Potvrdit ziadost od použivatela %s \n",menoUzivatela);
+            printf("[a] --> ANO\n[o] --> ODMIETNUT\n\n");
+
+            scanf("%s",potvrdenie);
+
+            write(socket,potvrdenie, sizeof(potvrdenie));
+        }else {
+            printf("INFO    Nema ziadne ziadosti\n");
+            menuPouzivatela(socket);
+            break;
+        }
+    }
+    return 0;
+}
+
+int zoznamPriatelov(int socket){
+    char priatelia[128];
+
+    printf("ZOZNAM PRIATELOV\n");
+    printf("------------------------------------------------\n");
+
+    while(1) {
+        bzero(priatelia, sizeof(priatelia));
+        read(socket, priatelia, sizeof(priatelia));
+
+        if(strcmp("koniec", priatelia) == 0) {
+            vysledok = 2;
+            printf("------------------------------------------------\n");
+            printf("\n");
+            menuPouzivatela(socket);
+            break;
+        }
+        printf("%s\n", priatelia);
+
+    }
+}
+
 int pridajPriatela(int socket) {
 
     char pouzivatelia[128];
@@ -233,6 +278,12 @@ int pridajPriatela(int socket) {
         scanf("%s", &menoUsera);
         write(socket, menoUsera, sizeof(menoUsera));
 
+        if(strcmp("bye", menoUsera) == 0) {
+            vysledok = 2;
+            menuPouzivatela(socket);
+            break;
+        }
+
         bzero(odpoved, sizeof(odpoved));
         read(socket, odpoved,sizeof(odpoved));
 
@@ -240,10 +291,14 @@ int pridajPriatela(int socket) {
             vysledok = 2;
             menuPouzivatela(socket);
             break;
+        } else if(strncmp(odpoved,"already friend",14) == 0){
+            printf("INFO    Uz ste priatelia!!\n");
+            vysledok = 2;
+            menuPouzivatela(socket);
+            break;
         } else {
             continue;
         }
-
     }
 }
 
@@ -259,6 +314,8 @@ int menuPouzivatela(int socket) {
     printf("[a] -- chatovat\n");
     printf("[b] -- pridat priatelov\n");
     printf("[c] -- odstranit priatelov\n");
+    printf("[f] -- zoznam priatelov\n");
+    printf("[e] -- ziadosti o priatelstvo\n");
     printf("[d] -- odhlasit sa\n");
     printf("---------------------------------------------\n");
     char volba[20];
@@ -274,7 +331,14 @@ int menuPouzivatela(int socket) {
         return 1;
     } else if(strncmp(volba, "b", 1) == 0) {
         pridajPriatela(socket);
-    } else if(strncmp(volba, "d", 1) == 0){
+
+    }else if(strncmp(volba, "f", 1) == 0) {
+        zoznamPriatelov(socket);
+
+    }else if(strncmp(volba, "e", 1) == 0) {
+        ziadostiPriatelov(socket);
+
+    }else if(strncmp(volba, "d", 1) == 0){
         odhlasitSa(socket);
         return 3;
     }
