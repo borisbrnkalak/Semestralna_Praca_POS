@@ -302,6 +302,51 @@ int pridajPriatela(int socket) {
     }
 }
 
+int odstranPriatela(int socket) {
+    char pouzivatelia[128];
+    char menoUsera[128];
+    char odpoved[128];
+
+    printf("PRIATELSKA LISTINA POUZIVATELIA:\n");
+    printf("------------------------------------------------\n");
+
+    while(1) {
+        bzero(pouzivatelia, sizeof(pouzivatelia));
+        read(socket, pouzivatelia, sizeof(pouzivatelia));
+
+        if(strcmp("koniec", pouzivatelia) == 0) {
+            break;
+        }
+        printf("%s\n", pouzivatelia);
+    }
+    printf("------------------------------------------------\n");
+
+
+    while(1) {
+        printf("Zadajte meno, koho chcete odstranit z priatelskej listiny\n");
+        scanf("%s", &menoUsera);
+        write(socket, menoUsera, sizeof(menoUsera));
+
+        if(strcmp("bye", menoUsera) == 0) {
+            vysledok = 3;
+            menuPouzivatela(socket);
+            break;
+        }
+
+        bzero(odpoved, sizeof(odpoved));
+        read(socket, odpoved,sizeof(odpoved));
+
+        if(strncmp(odpoved, "ok", 2) == 0) {
+            vysledok = 3;
+            menuPouzivatela(socket);
+            break;
+        } else {
+            printf("INFO    Zadali ste nespravne meno!\n");
+            continue;
+        }
+    }
+}
+
 int odhlasitSa(int socket){
     memset(prihlaseny, 0, sizeof(prihlaseny));
     jePrihlaseny = 0;
@@ -332,13 +377,16 @@ int menuPouzivatela(int socket) {
     } else if(strncmp(volba, "b", 1) == 0) {
         pridajPriatela(socket);
 
-    }else if(strncmp(volba, "f", 1) == 0) {
+    } else if(strncmp(volba, "c", 1) == 0) {
+        odstranPriatela(socket);
+
+    } else if(strncmp(volba, "f", 1) == 0) {
         zoznamPriatelov(socket);
 
-    }else if(strncmp(volba, "e", 1) == 0) {
+    } else if(strncmp(volba, "e", 1) == 0) {
         ziadostiPriatelov(socket);
 
-    }else if(strncmp(volba, "d", 1) == 0){
+    } else if(strncmp(volba, "d", 1) == 0){
         odhlasitSa(socket);
         return 3;
     }

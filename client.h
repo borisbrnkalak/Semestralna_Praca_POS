@@ -15,5 +15,6 @@ int menuPouzivatela(int socket);
 int vypnut(int socket);
 int pridajPriatela(int socket);
 int zoznamPriatelov(int socket);
+int odstranPriatela(int socket);
 
 #endif //SEMESTRALNA_PRACA_POS_CLIENT_H

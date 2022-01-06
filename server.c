@@ -125,6 +125,82 @@ int premazListinu(client_t* cli) {
     return 1;
 }
 
+int odstranPriatela(int socket, client_t* cli) {
+    char meno[128];
+    char bufferStlpec1[128];
+    char bufferStlpec2[128];
+
+    FILE* subor = otvorSubor("friendList.txt");
+
+    rewind(subor);
+
+    while(fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) == 2) {
+        if((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) == 0)) {
+            write(socket, bufferStlpec2, sizeof(bufferStlpec2));
+        }
+        if((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) == 0)){
+            write(socket, bufferStlpec1, sizeof(bufferStlpec1));
+        }
+    }
+
+    rewind(subor);
+    write(socket, "koniec", strlen("koniec"));
+
+    while(1) {
+        int nasielSa = 0;
+        bzero(meno, sizeof(meno));
+        read(socket, meno, sizeof(meno));
+
+        if(strcmp(meno,"bye") == 0){
+            break;
+        }
+
+        if(strcmp(meno, cli->aktualnePrihlaseny) == 0) {
+            printf("Uzivatel nemoze odstranit sameho seba!\n");
+            write(socket, "error", strlen("error"));
+            continue;
+        }
+
+        rewind(subor);
+        while(fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) != EOF) {
+            if((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) == 0) && strcmp(meno, bufferStlpec2) == 0) {
+                nasielSa = 1;
+                break;
+            }
+            if((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) == 0) && strcmp(meno, bufferStlpec1) == 0) {
+                nasielSa = 1;
+                break;
+            }
+        }
+
+
+        if(nasielSa == 1) {
+            FILE *suborTmp = otvorSubor("temp.txt");
+            //rewind(subor);
+            while(fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) != EOF) {
+                if(((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) != 0) || (strcmp(meno, bufferStlpec2) != 0)) &&
+                ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) != 0) || (strcmp(meno, bufferStlpec2) != 0))) {
+                    fprintf(suborTmp, bufferStlpec1);
+                    fprintf(suborTmp, " ");
+                    fprintf(suborTmp, bufferStlpec2);
+                    fprintf(suborTmp, "\n");
+                }
+
+            }
+            write(socket, "ok", strlen("ok"));
+            fclose(subor);
+            fclose(suborTmp);
+            remove("friendList.txt");
+            rename("temp.txt", "friendList.txt");
+            return 1;
+        }
+        write(socket, "error", strlen("error"));
+    }
+    fclose(subor);
+    return 1;
+}
+
+
 int pridajNovehoPriatela(int socket, client_t* cli) {
 
     char pouzivatel[128];
@@ -259,7 +335,6 @@ void *handle_client(void *arg) {
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd, volba, sizeof(volba));
 
-                //printf("Volba bola: %s\n",volba);
             } else if (strncmp(buffer, "b", 1) == 0) {
                 skontrolujRegistraciu(cli->sockfd, cli);
 
@@ -301,17 +376,21 @@ void *handle_client(void *arg) {
                     }
                 }
             } else if(strncmp(volba, "b", 1) == 0) {
-
                 pridajNovehoPriatela(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));
+
+            } else if(strncmp(volba, "c", 1) == 0) {
+                odstranPriatela(cli->sockfd, cli);
+                bzero(volba, sizeof(volba));
+                read(cli->sockfd, volba, sizeof(volba));
 
             } else if(strncmp(volba, "f", 1) == 0) {
                 posliZoznamPriatelov(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));
-            }else if(strncmp(volba, "e", 1) == 0) {
 
+            }else if(strncmp(volba, "e", 1) == 0) {
                 ukazZiadostOpriatelstvo(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));

@@ -28,5 +28,6 @@ int zapisDoFriendList(char* pouzivatel, char* priatel);
 int premazListinu(client_t* cli);
 int prejdiFriendList(char* prijmatel,client_t* cli);
 void posliZoznamPriatelov(int socket, client_t* cli);
+int odstranPriatela(int socket, client_t* cli);
 
 #endif //SEMESTRALNA_PRACA_POS_SERVER_H
