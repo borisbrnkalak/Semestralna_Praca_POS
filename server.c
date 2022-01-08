@@ -173,13 +173,14 @@ int odstranPriatela(int socket, client_t* cli) {
             }
         }
 
+        rewind(subor);
 
         if(nasielSa == 1) {
             FILE *suborTmp = otvorSubor("temp.txt");
-            //rewind(subor);
+
             while(fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) != EOF) {
                 if(((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) != 0) || (strcmp(meno, bufferStlpec2) != 0)) &&
-                ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) != 0) || (strcmp(meno, bufferStlpec2) != 0))) {
+                ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) != 0) || (strcmp(meno, bufferStlpec1) != 0))) {
                     fprintf(suborTmp, bufferStlpec1);
                     fprintf(suborTmp, " ");
                     fprintf(suborTmp, bufferStlpec2);
@@ -341,7 +342,6 @@ void *handle_client(void *arg) {
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd, volba, sizeof(volba));
 
-                //printf("Volba bola: %s\n",volba);
             }else if(strncmp(buffer, "c", 1) == 0) {
                 vymazanieUctu(cli->sockfd, cli);
             } else if(strncmp(buffer, "x", 1) == 0){
@@ -363,7 +363,7 @@ void *handle_client(void *arg) {
                 if (i == 0) {
                     bzero(volba, sizeof(volba));
                     read(cli->sockfd,volba,sizeof (volba));
-                    //printf("Napisal bye v volbe je: %s\n", volba);
+
                 }else {
 
                     printf("Here is the message: %s\n", buffer);

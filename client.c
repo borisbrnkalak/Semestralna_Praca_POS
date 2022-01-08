@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-int prihlas(int socket) {
+int prihlas (int socket) {
     printf("===================\n");
     printf("PRIHLASENIE\n");
     printf("===================\n");
@@ -162,7 +162,7 @@ int prihlas(int socket) {
     return 0;
 }
 
-int registruj(int socket) {
+int registruj (int socket) {
     printf("===================\n");
     printf("REGISTRACIA\n");
     printf("===================\n");
@@ -205,11 +205,11 @@ int registruj(int socket) {
     return 1;
 }
 
-int chatovanie(int socket){
+int chatovanie (int socket){
 
 }
 
-int ziadostiPriatelov(int socket) {
+int ziadostiPriatelov (int socket) {
     char potvrdenie[128];
     char menoUzivatela[128];
 
@@ -232,7 +232,7 @@ int ziadostiPriatelov(int socket) {
     return 0;
 }
 
-int zoznamPriatelov(int socket){
+int zoznamPriatelov (int socket){
     char priatelia[128];
 
     printf("ZOZNAM PRIATELOV\n");
@@ -254,7 +254,7 @@ int zoznamPriatelov(int socket){
     }
 }
 
-int pridajPriatela(int socket) {
+int pridajPriatela (int socket) {
 
     char pouzivatelia[128];
     char menoUsera[128];
@@ -302,7 +302,7 @@ int pridajPriatela(int socket) {
     }
 }
 
-int odstranPriatela(int socket) {
+int odstranPriatela (int socket) {
     char pouzivatelia[128];
     char menoUsera[128];
     char odpoved[128];
@@ -354,7 +354,7 @@ int odhlasitSa(int socket){
     return 1;
 }
 
-int menuPouzivatela(int socket) {
+int menuPouzivatela (int socket) {
     printf("Zadajte volbu, co chcete aby sa stalo:\n");
     printf("[a] -- chatovat\n");
     printf("[b] -- pridat priatelov\n");
@@ -396,7 +396,7 @@ int menuPouzivatela(int socket) {
     }
 }
 
-void autentifikacia(int socket) {
+void autentifikacia (int socket) {
     printf("Zadajte volbu, co chcete aby sa stalo:\n");
     printf("[a] -- prihlasenie\n");
     printf("[b] -- registracia\n");
@@ -423,11 +423,11 @@ void autentifikacia(int socket) {
         autentifikacia(socket);
     }
 }
-int vypnut(int socket) {
+int vypnut (int socket) {
     close(socket);
     return vypnutySocket = 1;
 }
-int zmazanieUctu(int socket) {
+int zmazanieUctu (int socket) {
     char meno[128];
     char heslo[128];
     char odpoved[10];
