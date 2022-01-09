@@ -16,6 +16,8 @@ typedef struct{
     char name[32];
     int jePrihlaseny;
     char aktualnePrihlaseny[128];
+    int chatuje;
+    char prijmatel[128];
 } client_t;
 
 FILE* otvorSubor(char* nazov);

@@ -7,11 +7,12 @@
 #include <unistd.h>
 #include "server.h"
 #include <pthread.h>
-
+#include <crypt.h>
 
 #define MAX_CLIENTS 10
 #define BUFFER_SZ 2048
 
+int chatuje = 0;
 
 
 client_t *clients[MAX_CLIENTS];
@@ -67,13 +68,11 @@ int chatuj(int socket, client_t *cli) {
     int n = 0;
     char buffMeno[128];
     char buffSprava[128];
-
+    char hashMess[128];
     char bufferStlpec1[128];
     char bufferStlpec2[128];
     char prijmutaSprava[128];
     char prijemca[128];
-
-    FILE* f;
 
     FILE *subor = otvorSubor("friendList.txt");
 
@@ -85,11 +84,11 @@ int chatuj(int socket, client_t *cli) {
             write(socket, bufferStlpec1, sizeof(bufferStlpec1));
         }
     }
-    //fclose(subor);
+
     write(socket, "koniec", strlen("koniec"));
 
     printf("Vypisal som mena\n");
-    //client si zvoli s kym chce pi
+
     while (1) {
         bzero(buffMeno, sizeof(buffMeno));
         read(socket, buffMeno, sizeof(buffMeno));
@@ -99,12 +98,13 @@ int chatuj(int socket, client_t *cli) {
         }
 
         int nasielSa = 0;
-
         if (strcmp(buffMeno, cli->aktualnePrihlaseny) == 0) {
             printf("Uzivatel nemoze napisat sebe!\n");
             write(socket, "error", strlen("error"));
             continue;
         }
+
+        strcpy(cli->prijmatel, buffMeno);
 
         rewind(subor);
         while (fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) != EOF) {
@@ -120,43 +120,10 @@ int chatuj(int socket, client_t *cli) {
 
         if (nasielSa == 1) {
             write(socket, "ok", 2);
-
-            while (1) {
-
-
-                //CHATUJE
-                bzero(buffSprava, sizeof(buffSprava));
-                read(socket, buffSprava, sizeof(buffSprava));
-
-                int i = strncmp("bye\n", buffSprava, 4);
-                if (i == 0) {
-                    fclose(subor);
-                    return 1;
-                } else {
-                    printf("Here is the message: %s\n", buffSprava);
-
-                    for(int i = 0; i < MAX_CLIENTS; ++i) {
-                        if(clients[i]){
-                            if(strcmp(clients[i]->aktualnePrihlaseny, buffMeno) == 0) {
-                                if(write(clients[i]->sockfd, buffSprava, strlen(buffSprava)) < 0) {
-                                    perror("ERROR: write to descriptor failed");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    /*const char *msg = "I got your message";
-                    n = write(socket, msg, strlen(msg));
-                    if (n < 0) {
-                        perror("Error writing to socket");
-                        return 5;
-                    }*/
-                }
-            }
+            break;
+        } else {
+            write(socket, "error", strlen("error"));
         }
-
-        write(socket, "error", strlen("error"));
 
     }
     fclose(subor);
@@ -408,18 +375,24 @@ void *handle_client(void *arg) {
 
     while (1) {
 
-        if(strcmp(volba, "b") != 0 ) {
-            if(strcmp(volba, "e") != 0){
-                if(strcmp(volba, "f") != 0){
-                    if(strcmp(volba, "c") != 0) {
-                        if(strcmp(volba, "a") != 0) {
-                            bzero(buffer, 256);
-                            n = read(cli->sockfd, buffer, sizeof(buffer));
+       if(chatuje == 0) {
+            if(strcmp(volba, "b") != 0 ) {
+                if(strcmp(volba, "e") != 0){
+                    if(strcmp(volba, "f") != 0){
+                        if(strcmp(volba, "c") != 0) {
+                            if(strcmp(volba, "a") != 0) {
+                                bzero(buffer, 256);
+                                n = read(cli->sockfd, buffer, sizeof(buffer));
+                            }
                         }
                     }
                 }
             }
         }
+
+        /*bzero(buffer, sizeof(buffer));
+        n = read(cli->sockfd, buffer, sizeof(buffer));*/
+
 
         if (n < 0) {
             perror("Error reading from socket");
@@ -432,17 +405,16 @@ void *handle_client(void *arg) {
             cli->jePrihlaseny = 0;
         }
         if (cli->jePrihlaseny == 0) {
-
             if (strncmp(buffer, "a", 1) == 0) {
                 skontrolujPrihlasenie(cli->sockfd, cli);
 
-                bzero(volba, sizeof(volba));
-                read(cli->sockfd, volba, sizeof(volba));
+               bzero(volba, sizeof(volba));
+               read(cli->sockfd, volba, sizeof(volba));
 
             } else if (strncmp(buffer, "b", 1) == 0) {
                 skontrolujRegistraciu(cli->sockfd, cli);
 
-                bzero(volba, sizeof(volba));
+               bzero(volba, sizeof(volba));
                 read(cli->sockfd, volba, sizeof(volba));
 
             }else if(strncmp(buffer, "c", 1) == 0) {
@@ -461,46 +433,55 @@ void *handle_client(void *arg) {
 
         } else {
             if(strncmp(volba,"a",1) == 0){
-
                 chatuj(cli->sockfd, cli);
+                chatuje = 1;
                 bzero(volba, sizeof(volba));
-                read(cli->sockfd,volba,sizeof (volba));
+                /*read(cli->sockfd,volba,sizeof (volba));*/
+               // continue;
 
-                /* int i = strncmp("bye\n", buffer, 4);
-                 if (i == 0) {
-                     bzero(volba, sizeof(volba));
-                     read(cli->sockfd,volba,sizeof (volba));
-
-                 }else {
-
-                     printf("Here is the message: %s\n", buffer);
-                     //send_message(buffer, cli->uid);
-                     const char *msg = "I got your message";
-                     n = write(cli->sockfd, msg, strlen(msg));
-                     if (n < 0) {
-                         perror("Error writing to socket");
-                         return 5;
-                     }
-                 }*/
             } else if(strncmp(volba, "b", 1) == 0) {
                 pridajNovehoPriatela(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));
+                //continue;
 
             } else if(strncmp(volba, "c", 1) == 0) {
                 odstranPriatela(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd, volba, sizeof(volba));
+                //continue;
 
             } else if(strncmp(volba, "f", 1) == 0) {
                 posliZoznamPriatelov(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));
+                //continue;
 
             }else if(strncmp(volba, "e", 1) == 0) {
                 ukazZiadostOpriatelstvo(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
                 read(cli->sockfd,volba,sizeof (volba));
+                //continue;
+            } else {
+                bzero(buffer, sizeof(buffer));
+                read(cli->sockfd, buffer, sizeof(buffer));
+
+                if ((strcmp(buffer, "bye\n") == 0) || strcmp(buffer, "bye") == 0) {
+                    continue;
+                } else {
+                    printf("Here is the message: %s\n", buffer);
+
+                    for(int i = 0; i < cli_count; ++i) {
+                        if(clients[i]){
+                            if(strcmp(clients[i]->aktualnePrihlaseny, cli->prijmatel) == 0) {
+                                if(write(clients[i]->sockfd, buffer, strlen(buffer)) < 0) {
+                                    perror("ERROR: write to descriptor failed");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         bzero(buffer, 256);
