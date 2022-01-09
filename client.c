@@ -34,17 +34,20 @@ void str_trim_lf(char *arr, int length) {
     }
 }
 
-void str_overwrite_stdout() {
+void pomocnyVypis() {
     printf("%s", "> ");
     fflush(stdout);
 }
 
-void send_msg_handler() {
-    char message[LENGTH] = {};
-    char buffer[LENGTH + 32] = {};
+void* send_msg_handler() {
+    char message[LENGTH];
+    char buffer[LENGTH];
+    bzero(message, sizeof(message));
+    bzero(buffer, sizeof(buffer));
+
 
     while (1) {
-        str_overwrite_stdout();
+        pomocnyVypis();
         fgets(message, LENGTH, stdin);
         str_trim_lf(message, LENGTH);
 
@@ -61,23 +64,30 @@ void send_msg_handler() {
         bzero(buffer, LENGTH + 32);
     }
     flag = 1;
+    return NULL;
 }
 
-void recv_msg_handler() {
+void* recv_msg_handler() {
 
-    char message[LENGTH] = {};
-    while (pocuva == 0) {
-        int receive = recv(hlavnySocket, message, LENGTH, 0);
-        if (receive > 0) {
-            printf("%s", message);
-            str_overwrite_stdout();
-        } else if (receive == 0) {
-            break;
+    char message[LENGTH];
+    bzero(message, sizeof(message));
+    while (1) {
+        if(pocuva == 0) {
+            int receive = recv(hlavnySocket, message, LENGTH, 0);
+            if (receive > 0) {
+                printf("%s", message);
+                pomocnyVypis();
+            } else if (receive == 0) {
+                break;
+            } else {
+                // -1
+            }
+            memset(message, 0, sizeof(message));
         } else {
-            // -1
+            break;
         }
-        memset(message, 0, sizeof(message));
     }
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -132,15 +142,13 @@ int main(int argc, char *argv[]) {
                 return 0;
             }
         } else {
-            if (vysledok = !1) {
+            if (vysledok != 1) {
                 continue;
             }
             chatovanie(sockfd);
             vysledok = 0;
         }
     }
-
-
 
     close(sockfd);
     return 0;
@@ -289,13 +297,13 @@ int chatovanie(int socket) {
         } else if (strncmp("ok", odpoved, 2) == 0) {
 
             pthread_t send_msg_thread;
-            if (pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0) {
+            if (pthread_create(&send_msg_thread, NULL, &send_msg_handler, NULL) != 0) {
                 printf("ERROR: pthread\n");
                 return EXIT_FAILURE;
             }
 
             pthread_t recv_msg_thread;
-            if (pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0) {
+            if (pthread_create(&recv_msg_thread, NULL, &recv_msg_handler, NULL) != 0) {
                 printf("ERROR: pthread\n");
                 return EXIT_FAILURE;
             }
@@ -303,11 +311,17 @@ int chatovanie(int socket) {
             while (1) {
                 if (flag == 1) {
                     printf("\nbye\n");
-                    flag = 0;
-                    menuPouzivatela(socket);
+                    /*pthread_join(send_msg_thread, NULL);
+                    pthread_join(recv_msg_thread, NULL);*/
+                    pthread_detach(recv_msg_thread);
+                    pthread_detach(send_msg_thread);
+                    sleep(1);
                     break;
                 }
             }
+            pocuva = 0;
+            flag = 0;
+            menuPouzivatela(socket);
             break;
         }
     }
@@ -470,6 +484,7 @@ int menuPouzivatela(int socket) {
     char volba[20];
     bzero(volba, 20);
     scanf("%s", &volba);
+
 
     while ((getchar()) != '\n');
 

@@ -47,32 +47,11 @@ void queue_remove(int uid){
     pthread_mutex_unlock(&clients_mutex);
 }
 
-void send_message(char *s, char* name){
-    pthread_mutex_lock(&clients_mutex);
-
-    for(int i=0; i<MAX_CLIENTS; ++i){
-        if(clients[i]){
-            if(strcmp(clients[i]->aktualnePrihlaseny, name) == 0){
-                if(write(clients[i]->sockfd, s, strlen(s)) < 0){
-                    perror("ERROR: write to descriptor failed");
-                    break;
-                }
-            }
-        }
-    }
-
-    pthread_mutex_unlock(&clients_mutex);
-}
-
 int chatuj(int socket, client_t *cli) {
     int n = 0;
     char buffMeno[128];
-    char buffSprava[128];
-    char hashMess[128];
     char bufferStlpec1[128];
     char bufferStlpec2[128];
-    char prijmutaSprava[128];
-    char prijemca[128];
 
     FILE *subor = otvorSubor("friendList.txt");
 
@@ -390,8 +369,6 @@ void *handle_client(void *arg) {
             }
         }
 
-        /*bzero(buffer, sizeof(buffer));
-        n = read(cli->sockfd, buffer, sizeof(buffer));*/
 
 
         if (n < 0) {
@@ -467,25 +444,40 @@ void *handle_client(void *arg) {
                 read(cli->sockfd, buffer, sizeof(buffer));
 
                 if ((strcmp(buffer, "bye\n") == 0) || strcmp(buffer, "bye") == 0) {
+                    chatuje = 0;
+                    //write(cli->sockfd, "bye", strlen("bye"));
+                    bzero(volba, sizeof(volba));
+                    read(cli->sockfd, volba, sizeof(volba));
                     continue;
                 } else {
                     printf("Here is the message: %s\n", buffer);
 
-                    for(int i = 0; i < cli_count; ++i) {
-                        if(clients[i]){
-                            if(strcmp(clients[i]->aktualnePrihlaseny, cli->prijmatel) == 0) {
-                                if(write(clients[i]->sockfd, buffer, strlen(buffer)) < 0) {
-                                    perror("ERROR: write to descriptor failed");
-                                    break;
+                    /*char* token;
+                    char pouzivatelia[256];
+                    strcpy(pouzivatelia, cli->prijmatel);
+                    token = strtok(pouzivatelia, ",");*/
+                   // while (token != 0) {
+                        for(int i = 0; i < cli_count; ++i) {
+                            if(clients[i]){
+                                if(strcmp(clients[i]->aktualnePrihlaseny, cli->prijmatel) == 0) {
+                                    if(write(clients[i]->sockfd, buffer, strlen(buffer)) < 0) {
+                                        perror("ERROR: write to descriptor failed");
+                                        break;
+                                    }
                                 }
                             }
                         }
+
+                   /*     token = strtok(0, ",");
                     }
+                    free(token);
+*/
                 }
             }
         }
         bzero(buffer, 256);
     }
+
 
     close(cli->sockfd);
     queue_remove(cli->uid);
