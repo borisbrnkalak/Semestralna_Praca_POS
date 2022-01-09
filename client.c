@@ -23,6 +23,40 @@ int jePrihlaseny = 0;
 
 int vysledok = 0;
 
+char* hashuj(char* string){
+    int i = 0;
+
+    while (string[i] != '\0') {
+        string[i] = (char)(string[i] - 10);
+        i++;
+    }
+    return string;
+}
+
+char* unHash(char* string){
+    int i = 1;
+    char buffer[256];
+    char *meno;
+    meno = strtok(string,": ");
+
+    char* sprava = strtok(NULL, "\n");
+
+    if(strcmp(string, "bye") == 0){
+        return "bye";
+    }
+
+    while (sprava[i] != '\0') {
+        sprava[i] = (char)(sprava[i] + 10);
+        i++;
+    }
+
+
+    snprintf(buffer, sizeof(buffer), "%s:%s\n", meno, sprava);
+
+    strcpy(string,buffer);
+    return string;
+}
+
 void str_trim_lf(char *arr, int length) {
     int i;
     for (i = 0; i < length; i++) {
@@ -55,6 +89,7 @@ void* posliSpravu() {
             pocuva = 1;
             break;
         } else {
+            hashuj(message);
             sprintf(buffer, "%s: %s\n", prihlaseny, message);
             send(hlavnySocket, buffer, strlen(buffer), 0);
         }
@@ -74,7 +109,8 @@ void* citajSpravu() {
         if(pocuva == 0) {
             int receive = recv(hlavnySocket, message, LENGTH, 0);
             if (receive > 0) {
-                printf("%s", message);
+                char* temp = unHash(message);
+                printf("%s", temp);
                 pomocnyVypis();
             } else if (receive == 0) {
                 break;
@@ -309,7 +345,7 @@ int chatovanie(int socket) {
 
             while (1) {
                 if (flag == 1) {
-                    printf("\nbye\n");
+                    printf("\nKoncim chatovanie\n");
                     /*pthread_join(send_msg_thread, NULL);
                     pthread_join(recv_msg_thread, NULL);*/
                     pthread_detach(recv_msg_thread);
@@ -334,7 +370,7 @@ int ziadostiPriatelov(int socket) {
         bzero(menoUzivatela, sizeof(menoUzivatela));
         read(socket, menoUzivatela, sizeof(menoUzivatela));
         if (strcmp(menoUzivatela, "empty") != 0) {
-            printf("Potvrdit ziadost od použivatela %s \n", menoUzivatela);
+            printf("Potvrdit ziadost od pouÅ¾ivatela %s \n", menoUzivatela);
             printf("[a] --> ANO\n[o] --> ODMIETNUT\n\n");
 
             scanf("%s", potvrdenie);
@@ -519,7 +555,7 @@ void autentifikacia(int socket) {
     printf("[a] -- prihlasenie\n");
     printf("[b] -- registracia\n");
     printf("[c] -- zmazanie uctu\n");
-    printf("[x] -- vypnuť program\n");
+    printf("[x] -- vypnut program\n");
     printf("---------------------------------------------\n");
     char volba[20];
 

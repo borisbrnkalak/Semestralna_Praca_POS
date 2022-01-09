@@ -16,5 +16,10 @@ int vypnut(int socket);
 int pridajPriatela(int socket);
 int zoznamPriatelov(int socket);
 int odstranPriatela(int socket);
+int odhlasitSa(int socket);
+void pomocnyVypis();
+void str_trim_lf(char *arr, int length);
+char* unHash(char* string);
+char* hashuj(char* string);
 
 #endif //SEMESTRALNA_PRACA_POS_CLIENT_H

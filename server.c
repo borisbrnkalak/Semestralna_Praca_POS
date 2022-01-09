@@ -368,7 +368,6 @@ void *handle_client(void *arg) {
             }
         }
 
-
         if (n < 0) {
             perror("Error reading from socket");
             return 4;
