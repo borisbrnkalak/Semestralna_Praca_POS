@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include "client.h"
 #include <pthread.h>
-#include <signal.h>
 
 #define LENGTH 512
 
@@ -26,7 +25,7 @@ int vysledok = 0;
 
 void str_trim_lf(char *arr, int length) {
     int i;
-    for (i = 0; i < length; i++) { // trim \n
+    for (i = 0; i < length; i++) {
         if (arr[i] == '\n') {
             arr[i] = '\0';
             break;
@@ -39,7 +38,7 @@ void pomocnyVypis() {
     fflush(stdout);
 }
 
-void* send_msg_handler() {
+void* posliSpravu() {
     char message[LENGTH];
     char buffer[LENGTH];
     bzero(message, sizeof(message));
@@ -67,7 +66,7 @@ void* send_msg_handler() {
     return NULL;
 }
 
-void* recv_msg_handler() {
+void* citajSpravu() {
 
     char message[LENGTH];
     bzero(message, sizeof(message));
@@ -297,13 +296,13 @@ int chatovanie(int socket) {
         } else if (strncmp("ok", odpoved, 2) == 0) {
 
             pthread_t send_msg_thread;
-            if (pthread_create(&send_msg_thread, NULL, &send_msg_handler, NULL) != 0) {
+            if (pthread_create(&send_msg_thread, NULL, &posliSpravu, NULL) != 0) {
                 printf("ERROR: pthread\n");
                 return EXIT_FAILURE;
             }
 
             pthread_t recv_msg_thread;
-            if (pthread_create(&recv_msg_thread, NULL, &recv_msg_handler, NULL) != 0) {
+            if (pthread_create(&recv_msg_thread, NULL, &citajSpravu, NULL) != 0) {
                 printf("ERROR: pthread\n");
                 return EXIT_FAILURE;
             }
