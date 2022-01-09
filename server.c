@@ -8,7 +8,8 @@
 #include "server.h"
 #include <pthread.h>
 
-#define MAX_CLIENTS 100
+
+#define MAX_CLIENTS 10
 #define BUFFER_SZ 2048
 
 
@@ -45,12 +46,12 @@ void queue_remove(int uid){
     pthread_mutex_unlock(&clients_mutex);
 }
 
-void send_message(char *s, int uid){
+void send_message(char *s, char* name){
     pthread_mutex_lock(&clients_mutex);
 
     for(int i=0; i<MAX_CLIENTS; ++i){
         if(clients[i]){
-            if(clients[i]->uid != uid){
+            if(strcmp(clients[i]->aktualnePrihlaseny, name) == 0){
                 if(write(clients[i]->sockfd, s, strlen(s)) < 0){
                     perror("ERROR: write to descriptor failed");
                     break;
@@ -60,6 +61,106 @@ void send_message(char *s, int uid){
     }
 
     pthread_mutex_unlock(&clients_mutex);
+}
+
+int chatuj(int socket, client_t *cli) {
+    int n = 0;
+    char buffMeno[128];
+    char buffSprava[128];
+
+    char bufferStlpec1[128];
+    char bufferStlpec2[128];
+    char prijmutaSprava[128];
+    char prijemca[128];
+
+    FILE* f;
+
+    FILE *subor = otvorSubor("friendList.txt");
+
+    while (fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) == 2) {
+        if ((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) == 0)) {
+            write(socket, bufferStlpec2, sizeof(bufferStlpec2));
+        }
+        if ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) == 0)) {
+            write(socket, bufferStlpec1, sizeof(bufferStlpec1));
+        }
+    }
+    //fclose(subor);
+    write(socket, "koniec", strlen("koniec"));
+
+    printf("Vypisal som mena\n");
+    //client si zvoli s kym chce pi
+    while (1) {
+        bzero(buffMeno, sizeof(buffMeno));
+        read(socket, buffMeno, sizeof(buffMeno));
+
+        if (strcmp(buffMeno, "bye") == 0) {
+            break;
+        }
+
+        int nasielSa = 0;
+
+        if (strcmp(buffMeno, cli->aktualnePrihlaseny) == 0) {
+            printf("Uzivatel nemoze napisat sebe!\n");
+            write(socket, "error", strlen("error"));
+            continue;
+        }
+
+        rewind(subor);
+        while (fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) != EOF) {
+            if ((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) == 0) && strcmp(buffMeno, bufferStlpec2) == 0) {
+                nasielSa = 1;
+                break;
+            }
+            if ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) == 0) && strcmp(buffMeno, bufferStlpec1) == 0) {
+                nasielSa = 1;
+                break;
+            }
+        }
+
+        if (nasielSa == 1) {
+            write(socket, "ok", 2);
+
+            while (1) {
+
+
+                //CHATUJE
+                bzero(buffSprava, sizeof(buffSprava));
+                read(socket, buffSprava, sizeof(buffSprava));
+
+                int i = strncmp("bye\n", buffSprava, 4);
+                if (i == 0) {
+                    fclose(subor);
+                    return 1;
+                } else {
+                    printf("Here is the message: %s\n", buffSprava);
+
+                    for(int i = 0; i < MAX_CLIENTS; ++i) {
+                        if(clients[i]){
+                            if(strcmp(clients[i]->aktualnePrihlaseny, buffMeno) == 0) {
+                                if(write(clients[i]->sockfd, buffSprava, strlen(buffSprava)) < 0) {
+                                    perror("ERROR: write to descriptor failed");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    /*const char *msg = "I got your message";
+                    n = write(socket, msg, strlen(msg));
+                    if (n < 0) {
+                        perror("Error writing to socket");
+                        return 5;
+                    }*/
+                }
+            }
+        }
+
+        write(socket, "error", strlen("error"));
+
+    }
+    fclose(subor);
+    return 1;
 }
 
 int ukazZiadostOpriatelstvo(int socket, client_t* cli){
@@ -180,7 +281,7 @@ int odstranPriatela(int socket, client_t* cli) {
 
             while(fscanf(subor, "%s %s", bufferStlpec1, bufferStlpec2) != EOF) {
                 if(((strcmp(cli->aktualnePrihlaseny, bufferStlpec1) != 0) || (strcmp(meno, bufferStlpec2) != 0)) &&
-                ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) != 0) || (strcmp(meno, bufferStlpec1) != 0))) {
+                   ((strcmp(cli->aktualnePrihlaseny, bufferStlpec2) != 0) || (strcmp(meno, bufferStlpec1) != 0))) {
                     fprintf(suborTmp, bufferStlpec1);
                     fprintf(suborTmp, " ");
                     fprintf(suborTmp, bufferStlpec2);
@@ -258,20 +359,20 @@ int pridajNovehoPriatela(int socket, client_t* cli) {
 }
 
 int prejdiFriendList(char* prijmatel,client_t* cli){
-    char* buffMeno1[128];
-    char* buffMeno2[128];
+    char buffMeno1[128];
+    char buffMeno2[128];
     FILE *suborFriendList = otvorSubor("friendList.txt");
 
     while(fscanf(suborFriendList,"%s %s", buffMeno1,buffMeno2) == 2){
         if(((strcmp(buffMeno1,prijmatel) == 0) || (strcmp(buffMeno1,cli->aktualnePrihlaseny) == 0))
            && ((strcmp(buffMeno2,cli->aktualnePrihlaseny) == 0) || (strcmp(buffMeno2,prijmatel) == 0))) {
             printf("INFO    Uz maju priatelstvo\n");
-            close(suborFriendList);
+            fclose(suborFriendList);
             rewind(suborFriendList);
             return 0;
         }
     }
-    close(suborFriendList);
+    fclose(suborFriendList);
     return 1;
 }
 
@@ -311,8 +412,10 @@ void *handle_client(void *arg) {
             if(strcmp(volba, "e") != 0){
                 if(strcmp(volba, "f") != 0){
                     if(strcmp(volba, "c") != 0) {
-                        bzero(buffer, 256);
-                        n = read(cli->sockfd, buffer, sizeof(buffer));
+                        if(strcmp(volba, "a") != 0) {
+                            bzero(buffer, 256);
+                            n = read(cli->sockfd, buffer, sizeof(buffer));
+                        }
                     }
                 }
             }
@@ -359,22 +462,26 @@ void *handle_client(void *arg) {
         } else {
             if(strncmp(volba,"a",1) == 0){
 
-                int i = strncmp("bye\n", buffer, 4);
-                if (i == 0) {
-                    bzero(volba, sizeof(volba));
-                    read(cli->sockfd,volba,sizeof (volba));
+                chatuj(cli->sockfd, cli);
+                bzero(volba, sizeof(volba));
+                read(cli->sockfd,volba,sizeof (volba));
 
-                }else {
+                /* int i = strncmp("bye\n", buffer, 4);
+                 if (i == 0) {
+                     bzero(volba, sizeof(volba));
+                     read(cli->sockfd,volba,sizeof (volba));
 
-                    printf("Here is the message: %s\n", buffer);
-                    //send_message(buffer, cli->uid);
-                    const char *msg = "I got your message";
-                    n = write(cli->sockfd, msg, strlen(msg));
-                    if (n < 0) {
-                        perror("Error writing to socket");
-                        return 5;
-                    }
-                }
+                 }else {
+
+                     printf("Here is the message: %s\n", buffer);
+                     //send_message(buffer, cli->uid);
+                     const char *msg = "I got your message";
+                     n = write(cli->sockfd, msg, strlen(msg));
+                     if (n < 0) {
+                         perror("Error writing to socket");
+                         return 5;
+                     }
+                 }*/
             } else if(strncmp(volba, "b", 1) == 0) {
                 pridajNovehoPriatela(cli->sockfd, cli);
                 bzero(volba, sizeof(volba));
@@ -578,8 +685,8 @@ int skontrolujPrihlasenie(int socket, client_t* cli) {
 }
 
 int zapisDoFriendList(char* pouzivatel, char* priatel){
-    char* buffPouzivatel[128];
-    char* buffPriatel[128];
+    char buffPouzivatel[128];
+    char buffPriatel[128];
     FILE *suborFriendList = otvorSubor("friendList.txt");
 
     while(fscanf(suborFriendList,"%s %s",buffPouzivatel,buffPriatel) == 2){
@@ -640,11 +747,8 @@ int vymazanieUctu(int socket, client_t* cli) {
 
                 break;
             }
-
         }
-
     }
-
     fclose(subor);
 
     subor = fopen(menoSuboru, "a+");
@@ -675,6 +779,3 @@ int vymazanieUctu(int socket, client_t* cli) {
 
 
 //-------------------------------------------------------------//
-
-
-

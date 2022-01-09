@@ -17,6 +17,7 @@ int jePrihlaseny = 0;
 int vysledok = 0;
 
 int main(int argc, char *argv[]) {
+    setlinebuf(stdout);
     int sockfd, n;
     struct sockaddr_in serv_addr;
     struct hostent *server;
@@ -74,33 +75,8 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            printf("Please enter a message: ");
-            bzero(buffer, 256);
-            fgets(buffer, 255, stdin);
+            chatovanie(sockfd);
 
-
-            n = write(sockfd, buffer, strlen(buffer));
-            if (n < 0) {
-                perror("Error writing to socket");
-
-                return 5;
-            }
-
-            int i = strncmp("bye\n", buffer, 4);
-            if (i == 0){
-                //printf("napisal bye. \n");
-
-                menuPouzivatela(sockfd);
-                continue;
-            }
-
-            bzero(buffer, 256);
-            n = read(sockfd, buffer, 255);
-            if (n < 0) {
-                perror("Error reading from socket");
-                return 6;
-            }
-            printf("%s\n", buffer);;
         }
     }
     close(sockfd);
@@ -172,6 +148,7 @@ int registruj (int socket) {
     char potvrdenie[128];
     char odpoved[128];
 
+
     printf("\n");
     printf("Zadajte nove meno: \n");
     scanf("%s", &meno);
@@ -206,7 +183,90 @@ int registruj (int socket) {
 }
 
 int chatovanie (int socket){
+    char pouzivatelia[128];
+    char menoUsera[128];
+    char sprava[128];
+    char odpoved[128];
+    char moznaSprava[128];
+    int n = 0;
 
+    printf("ZOZNAM PRIATELOV\n");
+    printf("------------------------------------------------\n");
+
+    while(1) {
+        bzero(pouzivatelia, sizeof(pouzivatelia));
+        read(socket, pouzivatelia, sizeof(pouzivatelia));
+
+        if(strcmp("koniec", pouzivatelia) == 0) {
+            vysledok = 2;
+            printf("------------------------------------------------\n");
+            printf("\n");
+            break;
+        }
+        printf("%s\n", pouzivatelia);
+
+    }
+
+    printf("INFO    vypisalo priatelov\n");
+    while(1) {
+        printf("Zadajte, s kym chcete chatovat: \n");
+        scanf("%s", &menoUsera);
+        while((getchar()) != '\n');
+
+        write(socket, menoUsera, sizeof(menoUsera));
+
+        if(strcmp("bye", menoUsera) == 0) {
+            vysledok = 3;
+            menuPouzivatela(socket);
+            break;
+        }
+
+        bzero(odpoved, sizeof(odpoved));
+        read(socket,odpoved, sizeof(odpoved));
+        if(strcmp("error",odpoved) == 0){
+            continue;
+        } else if(strncmp("ok", odpoved, 2) == 0){
+            while(1) {
+
+                printf("Please enter a message: \n");
+                bzero(sprava, sizeof(sprava));
+                fgets(sprava, sizeof(sprava), stdin);
+                //scanf("%s", &sprava);
+                //while((getchar()) != '\n');
+                //while((getchar()) != '\n');
+
+                n = write(socket, sprava, sizeof(sprava));
+                if (n < 0) {
+                    perror("Error writing to socket");
+
+                    return 5;
+                }
+
+                int i = strncmp("bye\n", sprava, 4);
+                if (i == 0){
+                    //printf("napisal bye. \n");
+                    vysledok = 3;
+                    menuPouzivatela(socket);
+                    break;
+                }
+
+                bzero(moznaSprava, sizeof(moznaSprava));
+                read(socket, moznaSprava, sizeof(moznaSprava));
+
+                printf("%s\n", moznaSprava);
+
+               /* bzero(sprava, sizeof(sprava));
+                n = read(socket, sprava, sizeof(sprava));
+                if (n < 0) {
+                    perror("Error reading from socket");
+                    return 6;
+                }
+                printf("%s\n", sprava);*/
+            }
+        }
+
+
+    }
 }
 
 int ziadostiPriatelov (int socket) {
@@ -307,7 +367,7 @@ int odstranPriatela (int socket) {
     char menoUsera[128];
     char odpoved[128];
 
-    printf("PRIATELSKA LISTINA POUZIVATELIA:\n");
+    printf("PRIATELSKA LISTINA POUZIVATELA:\n");
     printf("------------------------------------------------\n");
 
     while(1) {
@@ -372,6 +432,7 @@ int menuPouzivatela (int socket) {
     write(socket, volba, sizeof(volba));
 
     if (strncmp(volba, "a", 1) == 0) {
+        // TODO: zavolat metodu chatovanie
         vysledok = 1;
         return 1;
     } else if(strncmp(volba, "b", 1) == 0) {
